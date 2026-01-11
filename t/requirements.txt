@@ -1,6 +1,7 @@
 # The versions here aren't anything special, they just happened to
 # work on one machine.
 
+attrs~=23.0
 cffi~=1.15
 hypothesis~=6.37
 pytest~=7.0
