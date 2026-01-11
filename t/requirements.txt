@@ -1,12 +1,13 @@
 # The versions here aren't anything special, they just happened to
 # work on one machine.
 
-attrs~=23.0
-cffi~=1.15
-hypothesis~=6.37
-pytest~=7.0
-pytest-xdist~=2.5
-pycryptodome~=3.14
+attrs~=25.0
+cffi~=1.17
+hypothesis~=6.100
+pytest~=8.0
+pytest-forked~=1.6
+pytest-xdist~=3.5
+pycryptodome~=3.20
 
 # Development helpers
-black~=22.1
+black~=24.0
