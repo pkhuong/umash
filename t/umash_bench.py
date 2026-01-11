@@ -1,6 +1,7 @@
 """Builds and benchmarks multiple versions of UMASH on inputs
 generated from traces.
 """
+
 from collections import defaultdict, OrderedDict
 import itertools
 import random

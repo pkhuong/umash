@@ -1,6 +1,7 @@
 """
 Test suite for the general (16 bytes or longer) fingerprinting case.
 """
+
 from hypothesis import given, note
 import hypothesis.strategies as st
 from umash import C, FFI

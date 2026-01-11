@@ -1,6 +1,7 @@
 """
 Test suite for the very long input subroutine.
 """
+
 from hypothesis import given, note
 import hypothesis.strategies as st
 from umash import C, FFI

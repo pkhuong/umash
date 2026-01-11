@@ -1,6 +1,7 @@
 """
 Test suite for the public umash function.
 """
+
 from hypothesis import given
 import hypothesis.strategies as st
 from umash import C, FFI

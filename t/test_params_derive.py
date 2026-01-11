@@ -1,6 +1,7 @@
 """Minimal test that our parameter derivation logic does what we
 expect.
 """
+
 import struct
 from hypothesis import given
 import hypothesis.strategies as st

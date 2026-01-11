@@ -1,6 +1,7 @@
 """
 Test suite for the medium (9-16 bytes) input case.
 """
+
 from hypothesis import given
 import hypothesis.strategies as st
 from umash import C, FFI

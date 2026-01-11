@@ -1,6 +1,7 @@
 """
 Quick smoke test that our implementation of salsa20 does the right thing.
 """
+
 from hypothesis import given
 import hypothesis.strategies as st
 from Crypto.Cipher import Salsa20

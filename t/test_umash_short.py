@@ -1,6 +1,7 @@
 """
 Test suite for the short (<= 8 bytes) input case.
 """
+
 from hypothesis import given
 import hypothesis.strategies as st
 from umash import C, FFI

@@ -1,6 +1,7 @@
 """
 Test suite for modular arithmetic, specialised on 2**64 - 8 = 8(2**61 - 1).
 """
+
 import math
 from hypothesis import assume, given
 import hypothesis.strategies as st

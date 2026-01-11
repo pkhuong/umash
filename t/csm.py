@@ -8,6 +8,7 @@ This code is distributed under the BSD license and the Apache License
 version 2.0 (http://www.apache.org/licenses/LICENSE-2.0).  See the end
 of the file for details.
 """
+
 import math
 import random
 import struct

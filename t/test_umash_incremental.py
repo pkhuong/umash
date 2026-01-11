@@ -2,6 +2,7 @@
 interfaces.  Compares their results with the batch implementation and
 the reference implementation.
 """
+
 from hypothesis import note
 from hypothesis.stateful import (
     initialize,

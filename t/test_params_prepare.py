@@ -1,6 +1,7 @@
 """
 Test suite for the UMASH parameter preparation function.
 """
+
 import random
 from hypothesis import example, given
 import hypothesis.strategies as st
