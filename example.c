@@ -52,20 +52,20 @@ static uint64_t s[4] = {
 };
 
 static uint64_t
-next(void)
+xoshiro_next(uint64_t state[4])
 {
-	const uint64_t result = rotl(s[0] + s[3], 23) + s[0];
+	const uint64_t result = rotl(state[0] + state[3], 23) + state[0];
 
-	const uint64_t t = s[1] << 17;
+	const uint64_t t = state[1] << 17;
 
-	s[2] ^= s[0];
-	s[3] ^= s[1];
-	s[1] ^= s[2];
-	s[0] ^= s[3];
+	state[2] ^= state[0];
+	state[3] ^= state[1];
+	state[1] ^= state[2];
+	state[0] ^= state[3];
 
-	s[2] ^= t;
+	state[2] ^= t;
 
-	s[3] = rotl(s[3], 45);
+	state[3] = rotl(state[3], 45);
 
 	return result;
 }
@@ -115,7 +115,7 @@ run_test_set(void)
 	const char *bytes = (const char *)buf;
 
 	for (size_t i = 0; i < num_bytes / sizeof(uint64_t); i++)
-		buf[i] = next();
+		buf[i] = xoshiro_next(s);
 
 	fprintf(stderr,
 	    "Running %zu test set iterations.  Run as ./example | sha256sum --strict --check <(echo '%s  -')\n",
