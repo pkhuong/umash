@@ -740,7 +740,7 @@ umash_short(const uint64_t *params, uint64_t seed, const void *data, size_t n_by
 	return h;
 }
 
-static FN struct umash_fp
+TEST_DEF struct umash_fp
 umash_fp_short(const uint64_t *params, uint64_t seed, const void *data, size_t n_bytes)
 {
 	struct umash_fp ret;
@@ -808,7 +808,7 @@ umash_medium(const uint64_t multipliers[static 2], const uint64_t *oh, uint64_t 
 	    /*acc=*/0, multipliers[0], multipliers[1], enh_lo, enh_hi));
 }
 
-static FN struct umash_fp
+TEST_DEF struct umash_fp
 umash_fp_medium(const uint64_t multipliers[static 2][2], const uint64_t *oh,
     uint64_t seed, const void *data, size_t n_bytes)
 {

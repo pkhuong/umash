@@ -119,6 +119,14 @@ uint64_t umash_short(
     const uint64_t *params, uint64_t seed, const void *data, size_t n_bytes);
 
 /**
+ * Fingerprints up to 8 bytes of data.  Returns two independent
+ * `umash_short` values: the first uses params[0..], the second
+ * uses params[OH_SHORT_HASH_SHIFT..].
+ */
+struct umash_fp umash_fp_short(
+    const uint64_t *params, uint64_t seed, const void *data, size_t n_bytes);
+
+/**
  * Invertibly mixes the bits of `x`.
  */
 uint64_t finalize(uint64_t x);
@@ -130,6 +138,13 @@ uint64_t finalize(uint64_t x);
  */
 uint64_t umash_medium(const uint64_t multipliers[static 2], const uint64_t *oh,
     uint64_t seed, const void *data, size_t n_bytes);
+
+/**
+ * Fingerprints 9-16 bytes of data.  Returns two independent hash values
+ * computed from the primary and secondary polynomial multipliers.
+ */
+struct umash_fp umash_fp_medium(const uint64_t multipliers[static 2][2],
+    const uint64_t *oh, uint64_t seed, const void *data, size_t n_bytes);
 
 /**
  * Hashes 16 or more bytes of data with OH feeding into a polynomial hash.
