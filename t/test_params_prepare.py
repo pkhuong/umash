@@ -131,3 +131,39 @@ def test_public_smoke_matches(random, seed, data):
         secondary=True,
     )
     assert C.umash_full(params, seed, 1, data, len(data)) == expected1
+
+
+@given(
+    bits=U64S,
+    key=st.none() | st.binary(min_size=32, max_size=32),
+)
+def test_params_derive_valid(bits, key):
+    """umash_params_derive must always produce a valid params struct:
+
+    - poly[i][1] (the multiplier f) is in (0, 2**61 - 1)
+    - poly[i][0] == (f ** 2) % (2**61 - 1)
+    - all OH values are unique
+    - the result is idempotent under umash_params_prepare
+    """
+    params = FFI.new("struct umash_params[1]")
+    if key is None:
+        C.umash_params_derive(params, bits, FFI.NULL)
+    else:
+        buf = FFI.new("char[]", len(key))
+        FFI.memmove(buf, key, len(key))
+        C.umash_params_derive(params, bits, buf)
+
+    # Each polynomial multiplier must be a valid non-zero element of F.
+    for i in range(2):
+        f = params[0].poly[i][1]
+        assert 0 < f < FIELD, f"poly[{i}][1] = {f} is not in (0, 2**61-1)"
+        assert params[0].poly[i][0] == (f**2) % FIELD, (
+            f"poly[{i}][0] != f**2 mod FIELD"
+        )
+
+    # All OH parameters must be unique.
+    actual_oh = [params[0].oh[i] for i in range(OH_COUNT)]
+    assert len(actual_oh) == len(set(actual_oh)), "OH parameters contain duplicates"
+
+    # A valid params struct must be idempotent under prepare.
+    assert_idempotent(params)
