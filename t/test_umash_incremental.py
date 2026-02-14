@@ -16,6 +16,7 @@ from umash import C, FFI
 from umash_reference import umash, UmashKey
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 
 
 FIELD = 2**61 - 1
@@ -132,7 +133,7 @@ class IncrementalHasher(IncrementalUpdater):
         self.which = None
 
     @initialize(
-        params=umash_params(), seed=U64S, which=st.integers(min_value=0, max_value=1)
+        params=umash_params(), seed=SEEDS, which=st.integers(min_value=0, max_value=1)
     )
     def create_state(self, params, seed, which):
         self.multipliers, self.oh, self.params = params
@@ -171,7 +172,7 @@ class IncrementalFprinter(IncrementalUpdater):
         super().__init__()
         self.seed = None
 
-    @initialize(params=umash_params(), seed=U64S)
+    @initialize(params=umash_params(), seed=SEEDS)
     def create_state(self, params, seed):
         self.multipliers, self.oh, self.params = params
         self.state = FFI.new("struct umash_fp_state[1]")

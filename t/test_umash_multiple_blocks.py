@@ -15,6 +15,7 @@ from umash_reference import (
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 
 
 FIELD = 2**61 - 1
@@ -33,7 +34,7 @@ def multiple_blocks_reference(key, initial, seed, data):
 
 @given(
     initial=U64S,
-    seed=U64S,
+    seed=SEEDS,
     multiplier=st.integers(min_value=0, max_value=FIELD - 1),
     key=st.lists(
         U64S,
@@ -80,7 +81,7 @@ def test_umash_multiple_blocks(initial, seed, multiplier, key, data):
 
 @given(
     initial=U64S,
-    seed=U64S,
+    seed=SEEDS,
     multiplier=st.integers(min_value=0, max_value=FIELD - 1),
     key=st.lists(
         U64S,

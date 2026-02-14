@@ -9,6 +9,7 @@ from umash_reference import vec_to_u64, umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 
 
 @given(
@@ -24,7 +25,7 @@ def test_vec_to_u64(data):
 
 
 @given(
-    seed=U64S,
+    seed=SEEDS,
     key=st.lists(
         U64S,
         min_size=C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT,

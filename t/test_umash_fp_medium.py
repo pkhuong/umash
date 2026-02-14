@@ -9,13 +9,14 @@ from umash_reference import umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 
 
 FIELD = 2**61 - 1
 
 
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -49,7 +50,7 @@ def test_umash_fp_medium(seed, multipliers, key, data):
 
 
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),

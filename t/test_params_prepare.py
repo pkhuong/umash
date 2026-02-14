@@ -10,6 +10,7 @@ from umash_reference import umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 
 
 FIELD = 2**61 - 1
@@ -98,7 +99,7 @@ def test_public_bad_oh(oh, random):
 
 @given(
     random=st.randoms(note_method_calls=True, use_true_random=True),
-    seed=U64S,
+    seed=SEEDS,
     data=st.binary(),
 )
 def test_public_smoke_matches(random, seed, data):
@@ -157,9 +158,7 @@ def test_params_derive_valid(bits, key):
     for i in range(2):
         f = params[0].poly[i][1]
         assert 0 < f < FIELD, f"poly[{i}][1] = {f} is not in (0, 2**61-1)"
-        assert params[0].poly[i][0] == (f**2) % FIELD, (
-            f"poly[{i}][0] != f**2 mod FIELD"
-        )
+        assert params[0].poly[i][0] == (f**2) % FIELD, f"poly[{i}][0] != f**2 mod FIELD"
 
     # All OH parameters must be unique.
     actual_oh = [params[0].oh[i] for i in range(OH_COUNT)]

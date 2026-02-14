@@ -24,6 +24,7 @@ from umash_reference import umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 FIELD = 2**61 - 1
 
 # Sizes that straddle every dispatch boundary.
@@ -88,7 +89,7 @@ def make_block(data):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -122,7 +123,7 @@ def test_umash_full_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -178,7 +179,7 @@ def incremental_fprint(params, seed, data):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -203,7 +204,7 @@ def test_incremental_hash_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -231,7 +232,7 @@ def test_incremental_fprint_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -274,7 +275,7 @@ def test_incremental_chunked_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),

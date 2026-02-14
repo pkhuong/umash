@@ -31,6 +31,7 @@ from umash_reference import umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S
 FIELD = 2**61 - 1
 
 INCREMENTAL_GRANULARITY = 16
@@ -105,7 +106,7 @@ def reference_fprint(multipliers, key, seed, data):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -145,7 +146,7 @@ def test_incremental_granularity_aligned_hash(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -185,7 +186,7 @@ def test_incremental_granularity_aligned_fprint(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -237,7 +238,7 @@ def test_incremental_block_aligned_hash(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -324,7 +325,7 @@ SPLIT_PATTERNS = [
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -356,7 +357,7 @@ def test_incremental_split_patterns_hash(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -389,7 +390,7 @@ def test_incremental_split_patterns_fprint(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -426,7 +427,7 @@ def test_incremental_byte_at_a_time_hash_vs_ref(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -463,7 +464,7 @@ def test_incremental_byte_at_a_time_fprint_vs_ref(seed, multipliers, key, random
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -498,7 +499,7 @@ def test_incremental_random_splits_one_block_hash(
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -534,7 +535,7 @@ def test_incremental_random_splits_two_blocks_fprint(
 
 @settings(deadline=None)
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
