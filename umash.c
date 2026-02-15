@@ -870,6 +870,14 @@ umash_long(const uint64_t multipliers[static 2], const uint64_t *oh, uint64_t se
 		acc = umash_multiple_blocks(acc, multipliers, oh, seed, data, n_block);
 
 		data = remaining;
+		/*
+		 * When we have a round number of BLOCK_SIZE-byte
+		 * blocks, `(uint8_t)n_bytes == 0`, so the last block
+		 * correctly used `seed ^ (uint8_t)n_bytes`, it just
+		 * happens that that xor-ed value is equal to `seed`.
+		 * We're good to go when n_bytes (the remainder after
+		 * handling round blocks) is 0.
+		 */
 		if (n_bytes == 0)
 			goto finalize;
 
