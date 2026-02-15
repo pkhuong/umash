@@ -94,3 +94,39 @@ def test_umash_fp_long_repeat(seed, multipliers, key, data):
 
     actual = C.umash_fp_long(poly, params[0].oh, seed, block, n_bytes)
     assert [actual.hash[0], actual.hash[1]] == expected
+
+
+@given(
+    seed=SEEDS,
+    multipliers=st.lists(
+        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
+    ),
+    key=st.lists(
+        U64S,
+        min_size=C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT,
+        max_size=C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT,
+    ),
+    data=st.binary(min_size=1024, max_size=4096),
+)
+def test_umash_fp_long_large(seed, multipliers, key, data):
+    """Compare umash_fp_long with the reference for large diverse inputs."""
+    expected = [
+        umash(UmashKey(poly=multiplier, oh=key), seed, data, secondary)
+        for secondary, multiplier in zip([False, True], multipliers)
+    ]
+    note(len(data))
+
+    n_bytes = len(data)
+    block = FFI.new("char[]", n_bytes)
+    FFI.memmove(block, data, n_bytes)
+    poly = FFI.new("uint64_t[2][2]")
+    for i in range(2):
+        poly[i][0] = (multipliers[i] ** 2) % FIELD
+        poly[i][1] = multipliers[i]
+
+    params = FFI.new("struct umash_params[1]")
+    for i, param in enumerate(key):
+        params[0].oh[i] = param
+
+    actual = C.umash_fp_long(poly, params[0].oh, seed, block, n_bytes)
+    assert [actual.hash[0], actual.hash[1]] == expected
