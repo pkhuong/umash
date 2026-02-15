@@ -107,6 +107,24 @@ def test_public_multiplier_reduction(multipliers, random):
         assert params[0].oh[i] == i
 
 
+@given(value=U64S | st.sampled_from([0, 1, 2**64 - 1]))
+def test_public_all_identical_oh_fails(value):
+    """umash_params_prepare must fail when every OH slot holds the same
+    value: fixing all 34 duplicates requires far more entropy than the
+    two-entry backup buffer can provide."""
+    params = FFI.new("struct umash_params[1]")
+    # Use valid multipliers so any failure is from the OH check.
+    params[0].poly[0][0] = 0
+    params[0].poly[0][1] = 1
+    params[0].poly[1][0] = 0
+    params[0].poly[1][1] = 2
+
+    for i in range(OH_COUNT):
+        params[0].oh[i] = value
+
+    assert C.umash_params_prepare(params) == False
+
+
 @example(oh=[0] * OH_COUNT, random=random.Random(1))
 @given(
     oh=st.lists(
