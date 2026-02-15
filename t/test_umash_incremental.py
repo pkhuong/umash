@@ -16,7 +16,19 @@ from umash import C, FFI
 from umash_reference import umash, UmashKey
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
-SEEDS = U64S | st.sampled_from([0, 1, 0xFF, 2**32 - 1, 2**32, 2**63, 2**64 - 1])
+SEEDS = U64S | st.sampled_from([
+    0,
+    1,
+    0xFF,
+    2**32 - 1,
+    2**32,
+    2**63 - 1,   # INT64_MAX: all bits set except MSB
+    2**63,       # INT64_MIN as unsigned: only MSB set
+    2**63 + 1,   # just past the sign-bit boundary
+    2**64 - 9,   # UINT64_MAX - 8: near-max, stresses seed + param overflow
+    2**64 - 2,   # UINT64_MAX - 1: one below max
+    2**64 - 1,   # UINT64_MAX
+])
 
 
 FIELD = 2**61 - 1
