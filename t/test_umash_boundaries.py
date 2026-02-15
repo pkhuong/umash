@@ -348,3 +348,113 @@ def test_incremental_byte_at_a_time(seed, multipliers, key, random):
             expected.hash[0],
             expected.hash[1],
         ], f"byte-at-a-time fprint mismatch: len={n_bytes}"
+
+
+# -- Incremental: large update then short final update -----------------
+
+
+@settings(deadline=None)
+@given(
+    seed=SEEDS,
+    multipliers=st.lists(
+        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
+    ),
+    key=oh_key(),
+    chunk_size=st.sampled_from([1024, 1280, 1536, 2048, 4096]),
+    num_chunks=st.integers(min_value=1, max_value=4),
+    tail_size=st.integers(min_value=1, max_value=16),
+    random=st.randoms(use_true_random=True),
+)
+def test_incremental_hash_large_then_short(
+    seed, multipliers, key, chunk_size, num_chunks, tail_size, random
+):
+    """Feed one or more large (>1024 byte) updates followed by a short
+    (<=16 byte) final update via the incremental hash API.
+
+    This exercises the transition from the bulk multi-block path back to
+    finalization with a tiny trailing piece, for both which=0 and which=1.
+    """
+    params = make_params(multipliers, key)
+    total = chunk_size * num_chunks + tail_size
+    data = bytes(random.getrandbits(8) for _ in range(total))
+
+    for which in (0, 1):
+        state = FFI.new("struct umash_state[1]")
+        C.umash_init(state, params, seed, which)
+        sink = FFI.addressof(state[0].sink)
+
+        for i in range(num_chunks):
+            chunk = data[i * chunk_size : (i + 1) * chunk_size]
+            buf = make_block(chunk)
+            C.umash_sink_update(sink, buf, chunk_size)
+
+        tail = data[chunk_size * num_chunks :]
+        buf_tail = make_block(tail)
+        C.umash_sink_update(sink, buf_tail, tail_size)
+
+        block = make_block(data)
+        expected = C.umash_full(params, seed, which, block, total)
+        actual = C.umash_digest(state)
+        assert actual == expected, (
+            f"large+short incremental hash mismatch: "
+            f"which={which} chunks={num_chunks}x{chunk_size} tail={tail_size}"
+        )
+
+
+@settings(deadline=None)
+@given(
+    seed=SEEDS,
+    multipliers=st.lists(
+        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
+    ),
+    key=oh_key(),
+    chunk_size=st.sampled_from([1024, 1280, 1536, 2048, 4096]),
+    num_chunks=st.integers(min_value=1, max_value=4),
+    tail_size=st.integers(min_value=1, max_value=16),
+    random=st.randoms(use_true_random=True),
+)
+def test_incremental_fprint_large_then_short(
+    seed, multipliers, key, chunk_size, num_chunks, tail_size, random
+):
+    """Feed one or more large (>1024 byte) updates followed by a short
+    (<=16 byte) final update via the incremental fingerprint API.
+
+    Cross-checks both halves of the fingerprint against umash_full with
+    which=0 and which=1.
+    """
+    params = make_params(multipliers, key)
+    total = chunk_size * num_chunks + tail_size
+    data = bytes(random.getrandbits(8) for _ in range(total))
+
+    state = FFI.new("struct umash_fp_state[1]")
+    C.umash_fp_init(state, params, seed)
+    sink = FFI.addressof(state[0].sink)
+
+    for i in range(num_chunks):
+        chunk = data[i * chunk_size : (i + 1) * chunk_size]
+        buf = make_block(chunk)
+        C.umash_sink_update(sink, buf, chunk_size)
+
+    tail = data[chunk_size * num_chunks :]
+    buf_tail = make_block(tail)
+    C.umash_sink_update(sink, buf_tail, tail_size)
+
+    actual = C.umash_fp_digest(state)
+
+    block = make_block(data)
+    expected = C.umash_fprint(params, seed, block, total)
+    assert [actual.hash[0], actual.hash[1]] == [
+        expected.hash[0],
+        expected.hash[1],
+    ], (
+        f"large+short incremental fprint mismatch: "
+        f"chunks={num_chunks}x{chunk_size} tail={tail_size}"
+    )
+
+    # Cross-check each fingerprint half against the individual hash.
+    for which in (0, 1):
+        expected_hash = C.umash_full(params, seed, which, block, total)
+        assert actual.hash[which] == expected_hash, (
+            f"large+short fprint vs umash_full mismatch: "
+            f"which={which} chunks={num_chunks}x{chunk_size} tail={tail_size}"
+        )
