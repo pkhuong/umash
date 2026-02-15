@@ -83,6 +83,9 @@ def test_oh_full_block_fprint(tag, key, data):
         actual[1].bits[1],
     )
 
+    solo = C.oh_varblock(params[0].oh, tag, block, BLOCK_SIZE)
+    assert (actual[0].bits[0], actual[0].bits[1]) == (solo.bits[0], solo.bits[1])
+
 
 @given(
     tag=U64S,
@@ -148,6 +151,9 @@ def test_oh_tail_large_fprint(tag, key, data):
         actual[1].bits[0],
         actual[1].bits[1],
     )
+
+    solo = C.oh_varblock(params[0].oh, tag, block, n_bytes)
+    assert (actual[0].bits[0], actual[0].bits[1]) == (solo.bits[0], solo.bits[1])
 
 
 @given(
@@ -226,3 +232,6 @@ def test_oh_tail_short_fprint(tag, key, prefix, data):
         actual[1].bits[0],
         actual[1].bits[1],
     )
+
+    solo = C.oh_varblock(params[0].oh, tag, block + offset, n_bytes)
+    assert (actual[0].bits[0], actual[0].bits[1]) == (solo.bits[0], solo.bits[1])
