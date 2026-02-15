@@ -112,6 +112,26 @@ def make_block(data):
     return block
 
 
+def incremental_hash(params, seed, which, data):
+    """Compute a hash using the incremental API in one shot."""
+    state = FFI.new("struct umash_state[1]")
+    C.umash_init(state, params, seed, which)
+    sink = FFI.addressof(state[0].sink)
+    block = make_block(data)
+    C.umash_sink_update(sink, block, len(data))
+    return C.umash_digest(state)
+
+
+def incremental_fprint(params, seed, data):
+    """Compute a fingerprint using the incremental API in one shot."""
+    state = FFI.new("struct umash_fp_state[1]")
+    C.umash_fp_init(state, params, seed)
+    sink = FFI.addressof(state[0].sink)
+    block = make_block(data)
+    C.umash_sink_update(sink, block, len(data))
+    return C.umash_fp_digest(state)
+
+
 # -- Batch hash at boundaries ----------------------------------------
 
 
@@ -144,6 +164,11 @@ def test_umash_full_at_boundaries(seed, multipliers, key, random):
             assert (
                 actual == expected
             ), f"umash_full mismatch: which={which} len={n_bytes}"
+
+            incr = incremental_hash(params, seed, which, data)
+            assert (
+                incr == expected
+            ), f"incremental hash mismatch: which={which} len={n_bytes}"
 
 
 # -- Batch fingerprint at boundaries ---------------------------------
@@ -181,28 +206,14 @@ def test_umash_fprint_at_boundaries(seed, multipliers, key, random):
             actual.hash[1],
         ] == expected, f"umash_fprint mismatch: len={n_bytes}"
 
+        incr = incremental_fprint(params, seed, data)
+        assert [
+            incr.hash[0],
+            incr.hash[1],
+        ] == expected, f"incremental fprint mismatch: len={n_bytes}"
+
 
 # -- Incremental hash at boundaries ----------------------------------
-
-
-def incremental_hash(params, seed, which, data):
-    """Compute a hash using the incremental API in one shot."""
-    state = FFI.new("struct umash_state[1]")
-    C.umash_init(state, params, seed, which)
-    sink = FFI.addressof(state[0].sink)
-    block = make_block(data)
-    C.umash_sink_update(sink, block, len(data))
-    return C.umash_digest(state)
-
-
-def incremental_fprint(params, seed, data):
-    """Compute a fingerprint using the incremental API in one shot."""
-    state = FFI.new("struct umash_fp_state[1]")
-    C.umash_fp_init(state, params, seed)
-    sink = FFI.addressof(state[0].sink)
-    block = make_block(data)
-    C.umash_sink_update(sink, block, len(data))
-    return C.umash_fp_digest(state)
 
 
 @settings(deadline=None)
