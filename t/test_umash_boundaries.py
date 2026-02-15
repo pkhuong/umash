@@ -61,27 +61,95 @@ BOUNDARY_SIZES = [
     # exercise the polynomial hash accumulation across 3-10 OH blocks
     # and the block_sink_update bulk path in the incremental API.
     # 512 +/- is already above.
-    766, 767, 768, 769, 770,
-    1022, 1023, 1024, 1025, 1026,
-    1278, 1279, 1280, 1281, 1282,
-    1534, 1535, 1536, 1537, 1538,
-    1790, 1791, 1792, 1793, 1794,
-    2046, 2047, 2048, 2049, 2050,
-    2302, 2303, 2304, 2305, 2306,
-    2558, 2559, 2560, 2561, 2562,
+    766,
+    767,
+    768,
+    769,
+    770,
+    1022,
+    1023,
+    1024,
+    1025,
+    1026,
+    1278,
+    1279,
+    1280,
+    1281,
+    1282,
+    1534,
+    1535,
+    1536,
+    1537,
+    1538,
+    1790,
+    1791,
+    1792,
+    1793,
+    1794,
+    2046,
+    2047,
+    2048,
+    2049,
+    2050,
+    2302,
+    2303,
+    2304,
+    2305,
+    2306,
+    2558,
+    2559,
+    2560,
+    2561,
+    2562,
     # Large multi-block: sizes around {4096, 8192, 65536} with offsets
     # that hit block boundaries (256), INCREMENTAL_GRANULARITY boundaries
     # (16), and off-by-one around each.  These stress the polynomial
     # accumulation at depth and the umash_multiple_blocks fast path.
-    3839, 3840, 3841, 4079, 4080, 4081,
-    4095, 4096, 4097, 4111, 4112, 4113,
-    4351, 4352, 4353,
-    7935, 7936, 7937, 8175, 8176, 8177,
-    8191, 8192, 8193, 8207, 8208, 8209,
-    8447, 8448, 8449,
-    65279, 65280, 65281, 65519, 65520, 65521,
-    65535, 65536, 65537, 65551, 65552, 65553,
-    65791, 65792, 65793,
+    3839,
+    3840,
+    3841,
+    4079,
+    4080,
+    4081,
+    4095,
+    4096,
+    4097,
+    4111,
+    4112,
+    4113,
+    4351,
+    4352,
+    4353,
+    7935,
+    7936,
+    7937,
+    8175,
+    8176,
+    8177,
+    8191,
+    8192,
+    8193,
+    8207,
+    8208,
+    8209,
+    8447,
+    8448,
+    8449,
+    65279,
+    65280,
+    65281,
+    65519,
+    65520,
+    65521,
+    65535,
+    65536,
+    65537,
+    65551,
+    65552,
+    65553,
+    65791,
+    65792,
+    65793,
 ]
 
 
@@ -137,6 +205,8 @@ def incremental_fprint(params, seed, data):
 
 @settings(deadline=None)
 @given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
+    which=st.sampled_from([0, 1]),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -145,30 +215,23 @@ def incremental_fprint(params, seed, data):
     # Random content for every boundary length.
     random=st.randoms(use_true_random=True),
 )
-def test_umash_full_at_boundaries(seed, multipliers, key, random):
+def test_umash_full_at_boundaries(n_bytes, which, seed, multipliers, key, random):
     """umash_full must match the reference at every dispatch boundary."""
     params = make_params(multipliers, key)
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    block = make_block(data)
 
-    for n_bytes in BOUNDARY_SIZES:
-        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
-        block = make_block(data)
+    expected = umash(
+        UmashKey(poly=multipliers[which], oh=key),
+        seed,
+        data,
+        secondary=(which == 1),
+    )
+    actual = C.umash_full(params, seed, which, block, n_bytes)
+    assert actual == expected, f"umash_full mismatch: which={which} len={n_bytes}"
 
-        for which in (0, 1):
-            expected = umash(
-                UmashKey(poly=multipliers[which], oh=key),
-                seed,
-                data,
-                secondary=(which == 1),
-            )
-            actual = C.umash_full(params, seed, which, block, n_bytes)
-            assert (
-                actual == expected
-            ), f"umash_full mismatch: which={which} len={n_bytes}"
-
-            incr = incremental_hash(params, seed, which, data)
-            assert (
-                incr == expected
-            ), f"incremental hash mismatch: which={which} len={n_bytes}"
+    incr = incremental_hash(params, seed, which, data)
+    assert incr == expected, f"incremental hash mismatch: which={which} len={n_bytes}"
 
 
 # -- Batch fingerprint at boundaries ---------------------------------
@@ -176,6 +239,7 @@ def test_umash_full_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -183,34 +247,32 @@ def test_umash_full_at_boundaries(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_umash_fprint_at_boundaries(seed, multipliers, key, random):
+def test_umash_fprint_at_boundaries(n_bytes, seed, multipliers, key, random):
     """umash_fprint must match the reference at every dispatch boundary."""
     params = make_params(multipliers, key)
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    block = make_block(data)
 
-    for n_bytes in BOUNDARY_SIZES:
-        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
-        block = make_block(data)
+    expected = [
+        umash(
+            UmashKey(poly=multipliers[i], oh=key),
+            seed,
+            data,
+            secondary=(i == 1),
+        )
+        for i in range(2)
+    ]
+    actual = C.umash_fprint(params, seed, block, n_bytes)
+    assert [
+        actual.hash[0],
+        actual.hash[1],
+    ] == expected, f"umash_fprint mismatch: len={n_bytes}"
 
-        expected = [
-            umash(
-                UmashKey(poly=multipliers[i], oh=key),
-                seed,
-                data,
-                secondary=(i == 1),
-            )
-            for i in range(2)
-        ]
-        actual = C.umash_fprint(params, seed, block, n_bytes)
-        assert [
-            actual.hash[0],
-            actual.hash[1],
-        ] == expected, f"umash_fprint mismatch: len={n_bytes}"
-
-        incr = incremental_fprint(params, seed, data)
-        assert [
-            incr.hash[0],
-            incr.hash[1],
-        ] == expected, f"incremental fprint mismatch: len={n_bytes}"
+    incr = incremental_fprint(params, seed, data)
+    assert [
+        incr.hash[0],
+        incr.hash[1],
+    ] == expected, f"incremental fprint mismatch: len={n_bytes}"
 
 
 # -- Incremental hash at boundaries ----------------------------------
@@ -218,6 +280,8 @@ def test_umash_fprint_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
+    which=st.sampled_from([0, 1]),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -225,24 +289,20 @@ def test_umash_fprint_at_boundaries(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_hash_at_boundaries(seed, multipliers, key, random):
+def test_incremental_hash_at_boundaries(n_bytes, which, seed, multipliers, key, random):
     """The incremental API must agree with umash_full at boundary sizes."""
     params = make_params(multipliers, key)
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    block = make_block(data)
 
-    for n_bytes in BOUNDARY_SIZES:
-        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
-        block = make_block(data)
-
-        for which in (0, 1):
-            expected = C.umash_full(params, seed, which, block, n_bytes)
-            actual = incremental_hash(params, seed, which, data)
-            assert (
-                actual == expected
-            ), f"incremental hash mismatch: which={which} len={n_bytes}"
+    expected = C.umash_full(params, seed, which, block, n_bytes)
+    actual = incremental_hash(params, seed, which, data)
+    assert actual == expected, f"incremental hash mismatch: which={which} len={n_bytes}"
 
 
 @settings(deadline=None)
 @given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -250,20 +310,18 @@ def test_incremental_hash_at_boundaries(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_fprint_at_boundaries(seed, multipliers, key, random):
+def test_incremental_fprint_at_boundaries(n_bytes, seed, multipliers, key, random):
     """The incremental fingerprint API must agree with umash_fprint."""
     params = make_params(multipliers, key)
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    block = make_block(data)
 
-    for n_bytes in BOUNDARY_SIZES:
-        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
-        block = make_block(data)
-
-        expected = C.umash_fprint(params, seed, block, n_bytes)
-        actual = incremental_fprint(params, seed, data)
-        assert [actual.hash[0], actual.hash[1]] == [
-            expected.hash[0],
-            expected.hash[1],
-        ], f"incremental fprint mismatch: len={n_bytes}"
+    expected = C.umash_fprint(params, seed, block, n_bytes)
+    actual = incremental_fprint(params, seed, data)
+    assert [actual.hash[0], actual.hash[1]] == [
+        expected.hash[0],
+        expected.hash[1],
+    ], f"incremental fprint mismatch: len={n_bytes}"
 
 
 # -- Incremental with chunked feeding at boundaries ------------------
@@ -271,6 +329,8 @@ def test_incremental_fprint_at_boundaries(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
+    which=st.sampled_from([0, 1]),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -278,38 +338,112 @@ def test_incremental_fprint_at_boundaries(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_chunked_at_boundaries(seed, multipliers, key, random):
+def test_incremental_chunked_at_boundaries(
+    n_bytes, which, seed, multipliers, key, random
+):
     """Feed data in 16-byte chunks (INCREMENTAL_GRANULARITY) via the
     incremental API and compare with batch results.
 
     This exercises the buffer-flush and OH iteration logic at every
-    boundary size.
+    boundary size.  After every update and before the final digest, we
+    call umash_digest and verify that the state struct is unchanged.
     """
     params = make_params(multipliers, key)
     CHUNK = 16  # INCREMENTAL_GRANULARITY
 
-    for n_bytes in BOUNDARY_SIZES:
-        if n_bytes == 0:
-            continue
-        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+    state = FFI.new("struct umash_state[1]")
+    C.umash_init(state, params, seed, which)
+    sink = FFI.addressof(state[0].sink)
 
-        state = FFI.new("struct umash_state[1]")
-        C.umash_init(state, params, seed, 0)
-        sink = FFI.addressof(state[0].sink)
+    # Feed in CHUNK-sized pieces, with a possibly short final piece.
+    offset = 0
+    while offset < n_bytes:
+        end = min(offset + CHUNK, n_bytes)
+        piece = data[offset:end]
+        buf = make_block(piece)
+        C.umash_sink_update(sink, buf, len(piece))
 
-        # Feed in CHUNK-sized pieces, with a possibly short final piece.
-        offset = 0
-        while offset < n_bytes:
-            end = min(offset + CHUNK, n_bytes)
-            piece = data[offset:end]
-            buf = make_block(piece)
-            C.umash_sink_update(sink, buf, len(piece))
-            offset = end
+        before = bytes(FFI.buffer(state))
+        C.umash_digest(state)
+        after = bytes(FFI.buffer(state))
+        assert before == after, (
+            f"umash_digest mutated state: " f"which={which} len={n_bytes} offset={end}"
+        )
 
-        block = make_block(data)
-        expected = C.umash_full(params, seed, 0, block, n_bytes)
-        actual = C.umash_digest(state)
-        assert actual == expected, f"chunked incremental mismatch: len={n_bytes}"
+        offset = end
+
+    # Always check after the final update.
+    before = bytes(FFI.buffer(state))
+    C.umash_digest(state)
+    after = bytes(FFI.buffer(state))
+    assert before == after, (
+        f"umash_digest mutated state: " f"which={which} len={n_bytes} final"
+    )
+
+    block = make_block(data)
+    expected = C.umash_full(params, seed, which, block, n_bytes)
+    actual = C.umash_digest(state)
+    assert (
+        actual == expected
+    ), f"chunked incremental mismatch: which={which} len={n_bytes}"
+
+
+@settings(deadline=None)
+@given(
+    n_bytes=st.sampled_from(BOUNDARY_SIZES),
+    seed=SEEDS,
+    multipliers=st.lists(
+        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
+    ),
+    key=oh_key(),
+    random=st.randoms(use_true_random=True),
+)
+def test_incremental_chunked_fprint_at_boundaries(
+    n_bytes, seed, multipliers, key, random
+):
+    """Feed data in 16-byte chunks via the incremental fingerprint API
+    and compare with batch results.
+
+    After every update and after all updates (for every size) we call
+    umash_fp_digest and verify the state struct is unchanged.
+    """
+    params = make_params(multipliers, key)
+    CHUNK = 16  # INCREMENTAL_GRANULARITY
+    data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+
+    state = FFI.new("struct umash_fp_state[1]")
+    C.umash_fp_init(state, params, seed)
+    sink = FFI.addressof(state[0].sink)
+
+    offset = 0
+    while offset < n_bytes:
+        end = min(offset + CHUNK, n_bytes)
+        piece = data[offset:end]
+        buf = make_block(piece)
+        C.umash_sink_update(sink, buf, len(piece))
+
+        before = bytes(FFI.buffer(state))
+        C.umash_fp_digest(state)
+        after = bytes(FFI.buffer(state))
+        assert before == after, (
+            f"umash_fp_digest mutated state: " f"len={n_bytes} offset={end}"
+        )
+
+        offset = end
+
+    before = bytes(FFI.buffer(state))
+    C.umash_fp_digest(state)
+    after = bytes(FFI.buffer(state))
+    assert before == after, f"umash_fp_digest mutated state: " f"len={n_bytes} final"
+
+    block = make_block(data)
+    expected = C.umash_fprint(params, seed, block, n_bytes)
+    actual = C.umash_fp_digest(state)
+    assert [actual.hash[0], actual.hash[1]] == [
+        expected.hash[0],
+        expected.hash[1],
+    ], f"chunked incremental fprint mismatch: len={n_bytes}"
 
 
 @settings(deadline=None)
@@ -355,6 +489,7 @@ def test_incremental_byte_at_a_time(seed, multipliers, key, random):
 
 @settings(deadline=None)
 @given(
+    which=st.sampled_from([0, 1]),
     seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
@@ -366,7 +501,7 @@ def test_incremental_byte_at_a_time(seed, multipliers, key, random):
     random=st.randoms(use_true_random=True),
 )
 def test_incremental_hash_large_then_short(
-    seed, multipliers, key, chunk_size, num_chunks, tail_size, random
+    which, seed, multipliers, key, chunk_size, num_chunks, tail_size, random
 ):
     """Feed one or more large (>1024 byte) updates followed by a short
     (<=16 byte) final update via the incremental hash API.
@@ -378,27 +513,26 @@ def test_incremental_hash_large_then_short(
     total = chunk_size * num_chunks + tail_size
     data = bytes(random.getrandbits(8) for _ in range(total))
 
-    for which in (0, 1):
-        state = FFI.new("struct umash_state[1]")
-        C.umash_init(state, params, seed, which)
-        sink = FFI.addressof(state[0].sink)
+    state = FFI.new("struct umash_state[1]")
+    C.umash_init(state, params, seed, which)
+    sink = FFI.addressof(state[0].sink)
 
-        for i in range(num_chunks):
-            chunk = data[i * chunk_size : (i + 1) * chunk_size]
-            buf = make_block(chunk)
-            C.umash_sink_update(sink, buf, chunk_size)
+    for i in range(num_chunks):
+        chunk = data[i * chunk_size : (i + 1) * chunk_size]
+        buf = make_block(chunk)
+        C.umash_sink_update(sink, buf, chunk_size)
 
-        tail = data[chunk_size * num_chunks :]
-        buf_tail = make_block(tail)
-        C.umash_sink_update(sink, buf_tail, tail_size)
+    tail = data[chunk_size * num_chunks :]
+    buf_tail = make_block(tail)
+    C.umash_sink_update(sink, buf_tail, tail_size)
 
-        block = make_block(data)
-        expected = C.umash_full(params, seed, which, block, total)
-        actual = C.umash_digest(state)
-        assert actual == expected, (
-            f"large+short incremental hash mismatch: "
-            f"which={which} chunks={num_chunks}x{chunk_size} tail={tail_size}"
-        )
+    block = make_block(data)
+    expected = C.umash_full(params, seed, which, block, total)
+    actual = C.umash_digest(state)
+    assert actual == expected, (
+        f"large+short incremental hash mismatch: "
+        f"which={which} chunks={num_chunks}x{chunk_size} tail={tail_size}"
+    )
 
 
 @settings(deadline=None)

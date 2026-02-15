@@ -16,19 +16,21 @@ from umash import C, FFI
 from umash_reference import umash, UmashKey
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
-SEEDS = U64S | st.sampled_from([
-    0,
-    1,
-    0xFF,
-    2**32 - 1,
-    2**32,
-    2**63 - 1,   # INT64_MAX: all bits set except MSB
-    2**63,       # INT64_MIN as unsigned: only MSB set
-    2**63 + 1,   # just past the sign-bit boundary
-    2**64 - 9,   # UINT64_MAX - 8: near-max, stresses seed + param overflow
-    2**64 - 2,   # UINT64_MAX - 1: one below max
-    2**64 - 1,   # UINT64_MAX
-])
+SEEDS = U64S | st.sampled_from(
+    [
+        0,
+        1,
+        0xFF,
+        2**32 - 1,
+        2**32,
+        2**63 - 1,  # INT64_MAX: all bits set except MSB
+        2**63,  # INT64_MIN as unsigned: only MSB set
+        2**63 + 1,  # just past the sign-bit boundary
+        2**64 - 9,  # UINT64_MAX - 8: near-max, stresses seed + param overflow
+        2**64 - 2,  # UINT64_MAX - 1: one below max
+        2**64 - 1,  # UINT64_MAX
+    ]
+)
 
 
 FIELD = 2**61 - 1
@@ -218,7 +220,9 @@ class IncrementalHasher(IncrementalUpdater):
         )
 
     def batch_value(self):
-        batch = C.umash_full(self.params, self.seed, self.which, self.acc, len(self.acc))
+        batch = C.umash_full(
+            self.params, self.seed, self.which, self.acc, len(self.acc)
+        )
 
         # Also verify the relevant half of a batch-computed fingerprint
         # agrees with the batch hash.  The parent invariant then checks
@@ -469,9 +473,9 @@ def test_public_incremental_short_hash_vs_ref(params, seed, random):
                 secondary=(which == 1),
             )
             actual = C.umash_digest(state)
-            assert actual == expected, (
-                f"incremental hash vs ref: which={which} len={n_bytes}"
-            )
+            assert (
+                actual == expected
+            ), f"incremental hash vs ref: which={which} len={n_bytes}"
 
 
 @settings(deadline=None)
@@ -503,6 +507,7 @@ def test_public_incremental_short_fprint_vs_ref(params, seed, random):
             for i in range(2)
         ]
         actual = C.umash_fp_digest(state)
-        assert [actual.hash[0], actual.hash[1]] == expected, (
-            f"incremental fprint vs ref: len={n_bytes}"
-        )
+        assert [
+            actual.hash[0],
+            actual.hash[1],
+        ] == expected, f"incremental fprint vs ref: len={n_bytes}"

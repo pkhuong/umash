@@ -36,21 +36,21 @@ def assert_idempotent(params):
 # Multiplier values at interesting boundaries for the mod-2^61-1
 # reduction in umash_params_prepare.
 MULTIPLIER_BOUNDARIES = [
-    0,              # zero — rejected
-    1,              # smallest valid
+    0,  # zero — rejected
+    1,  # smallest valid
     2,
-    FIELD - 1,      # 2^61 - 2: largest valid
-    FIELD,          # 2^61 - 1: equals modulo, rejected
-    FIELD + 1,      # 2^61: masks to 0, rejected
-    FIELD + 2,      # 2^61 + 1: masks to 1, valid
-    2 * FIELD,      # 2^62 - 2: masks to FIELD - 1, valid
+    FIELD - 1,  # 2^61 - 2: largest valid
+    FIELD,  # 2^61 - 1: equals modulo, rejected
+    FIELD + 1,  # 2^61: masks to 0, rejected
+    FIELD + 2,  # 2^61 + 1: masks to 1, valid
+    2 * FIELD,  # 2^62 - 2: masks to FIELD - 1, valid
     2 * FIELD + 1,  # 2^62 - 1: masks to FIELD, rejected
-    2**63 - 1,      # all lower 63 bits: masks to FIELD, rejected
-    2**63,          # only bit 63: masks to 0, rejected
-    2**63 + 1,      # bit 63 + 1: masks to 1, valid
-    2**64 - 9,      # UINT64_MAX - 8: masks to FIELD - 8, valid
-    2**64 - 2,      # UINT64_MAX - 1: masks to FIELD - 1, valid
-    2**64 - 1,      # UINT64_MAX: masks to FIELD, rejected
+    2**63 - 1,  # all lower 63 bits: masks to FIELD, rejected
+    2**63,  # only bit 63: masks to 0, rejected
+    2**63 + 1,  # bit 63 + 1: masks to 1, valid
+    2**64 - 9,  # UINT64_MAX - 8: masks to FIELD - 8, valid
+    2**64 - 2,  # UINT64_MAX - 1: masks to FIELD - 1, valid
+    2**64 - 1,  # UINT64_MAX: masks to FIELD, rejected
 ]
 
 
