@@ -38,6 +38,11 @@ INCREMENTAL_GRANULARITY = 16
 BLOCK_SIZE = 256
 
 
+def _uniform_splits(total, chunk):
+    """Split points for feeding *total* bytes in uniform *chunk*-byte pieces."""
+    return list(range(chunk, total, chunk))
+
+
 def oh_key():
     return st.lists(
         U64S,
@@ -320,6 +325,50 @@ SPLIT_PATTERNS = [
     (768, [256, 512]),
     # All at once (single update call, tests block_sink_update).
     (768, []),
+    # --- Larger sizes up to 1536 ---
+    # Four blocks, block-aligned.
+    (1024, [256, 512, 768]),
+    # Four blocks, straddle boundaries by +-1.
+    (1024, [255, 512, 769]),
+    # Four blocks with a tail.
+    (1025, [256, 512, 768]),
+    # Five blocks.
+    (1280, [256, 512, 768, 1024]),
+    # Five blocks, cross-boundary straddles.
+    (1280, [257, 511, 769, 1023]),
+    # Six blocks, block-aligned.
+    (1536, [256, 512, 768, 1024, 1280]),
+    # Six blocks, straddle every boundary.
+    (1536, [255, 513, 767, 1025, 1279]),
+    # 1536 all at once (single update, block_sink_update bulk path).
+    (1536, []),
+    # 1536 with a mid-block split in the first and last blocks.
+    (1536, [128, 256, 512, 768, 1024, 1408]),
+    # --- Odd chunk sizes: 7, 13, 15, 17, 31, 33 bytes ---
+    # 7-byte chunks.
+    (256, _uniform_splits(256, 7)),
+    (512, _uniform_splits(512, 7)),
+    (1024, _uniform_splits(1024, 7)),
+    # 13-byte chunks.
+    (256, _uniform_splits(256, 13)),
+    (512, _uniform_splits(512, 13)),
+    (1536, _uniform_splits(1536, 13)),
+    # 15-byte chunks (just under INCREMENTAL_GRANULARITY).
+    (256, _uniform_splits(256, 15)),
+    (512, _uniform_splits(512, 15)),
+    (1024, _uniform_splits(1024, 15)),
+    # 17-byte chunks (just over INCREMENTAL_GRANULARITY).
+    (256, _uniform_splits(256, 17)),
+    (512, _uniform_splits(512, 17)),
+    (1536, _uniform_splits(1536, 17)),
+    # 31-byte chunks (just under 2*INCREMENTAL_GRANULARITY).
+    (512, _uniform_splits(512, 31)),
+    (1024, _uniform_splits(1024, 31)),
+    (1536, _uniform_splits(1536, 31)),
+    # 33-byte chunks (just over 2*INCREMENTAL_GRANULARITY).
+    (512, _uniform_splits(512, 33)),
+    (1024, _uniform_splits(1024, 33)),
+    (1536, _uniform_splits(1536, 33)),
 ]
 
 
