@@ -373,3 +373,78 @@ def test_public_empty_updates_between_chunks_hash(params, seed, which, random):
             f"interleaved empty-updates hash mismatch: "
             f"which={which} chunk_size={chunk_size} n_chunks={n_chunks}"
         )
+
+
+# -- Short-input incremental vs Python reference -------------------------
+
+# Every size from 0 through 272 (one full OH block + one
+# INCREMENTAL_GRANULARITY chunk).  Short enough that the Python
+# reference is fast, thorough enough to cover every dispatch path
+# and off-by-one within.
+SHORT_INPUT_SIZES = range(273)
+
+
+@settings(deadline=None)
+@given(
+    params=umash_params(),
+    seed=SEEDS,
+    random=st.randoms(use_true_random=True),
+)
+def test_public_incremental_short_hash_vs_ref(params, seed, random):
+    """Incremental hash for both which=0 and which=1 must match the
+    Python reference for every input size up to 272 bytes."""
+    multipliers, oh, c_params = params
+
+    for n_bytes in SHORT_INPUT_SIZES:
+        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+
+        for which in (0, 1):
+            state = FFI.new("struct umash_state[1]")
+            C.umash_init(state, c_params, seed, which)
+            if n_bytes > 0:
+                _sink_data_update(FFI.addressof(state[0].sink), data)
+
+            expected = umash(
+                UmashKey(poly=multipliers[which], oh=oh),
+                seed,
+                data,
+                secondary=(which == 1),
+            )
+            actual = C.umash_digest(state)
+            assert actual == expected, (
+                f"incremental hash vs ref: which={which} len={n_bytes}"
+            )
+
+
+@settings(deadline=None)
+@given(
+    params=umash_params(),
+    seed=SEEDS,
+    random=st.randoms(use_true_random=True),
+)
+def test_public_incremental_short_fprint_vs_ref(params, seed, random):
+    """Incremental fingerprint (both hash[0] and hash[1]) must match
+    the Python reference for every input size up to 272 bytes."""
+    multipliers, oh, c_params = params
+
+    for n_bytes in SHORT_INPUT_SIZES:
+        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+
+        state = FFI.new("struct umash_fp_state[1]")
+        C.umash_fp_init(state, c_params, seed)
+        if n_bytes > 0:
+            _sink_data_update(FFI.addressof(state[0].sink), data)
+
+        expected = [
+            umash(
+                UmashKey(poly=multipliers[i], oh=oh),
+                seed,
+                data,
+                secondary=(i == 1),
+            )
+            for i in range(2)
+        ]
+        actual = C.umash_fp_digest(state)
+        assert [actual.hash[0], actual.hash[1]] == expected, (
+            f"incremental fprint vs ref: len={n_bytes}"
+        )
