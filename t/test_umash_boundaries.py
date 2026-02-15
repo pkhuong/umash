@@ -12,6 +12,7 @@ data lengths to sizes that exercise every dispatch transition:
  - 17+ bytes   -> umash_long
  - 256 bytes   -> OH block boundary (BLOCK_SIZE)
  - 257+ bytes  -> multi-block long path
+ - 1024, 2048  -> deeper multi-block, +/- {0,256,512} blocks
 
 The tests compare the C implementation against the Python reference
 for batch hashing, batch fingerprinting, and the incremental API.
@@ -54,6 +55,19 @@ BOUNDARY_SIZES = [
     511,
     512,
     513,
+    # Deeper multi-block: sizes around {1024, 2048} +/- {0, 256, 512},
+    # plus off-by-{1,2} around each block-aligned boundary.  These
+    # exercise the polynomial hash accumulation across 3-10 OH blocks
+    # and the block_sink_update bulk path in the incremental API.
+    # 512 +/- is already above.
+    766, 767, 768, 769, 770,
+    1022, 1023, 1024, 1025, 1026,
+    1278, 1279, 1280, 1281, 1282,
+    1534, 1535, 1536, 1537, 1538,
+    1790, 1791, 1792, 1793, 1794,
+    2046, 2047, 2048, 2049, 2050,
+    2302, 2303, 2304, 2305, 2306,
+    2558, 2559, 2560, 2561, 2562,
 ]
 
 
