@@ -33,10 +33,51 @@ def assert_idempotent(params):
         assert FFI.cast("uint64_t *", params)[i] == FFI.cast("uint64_t *", copy)[i]
 
 
+# Multiplier values at interesting boundaries for the mod-2^61-1
+# reduction in umash_params_prepare.
+MULTIPLIER_BOUNDARIES = [
+    0,              # zero — rejected
+    1,              # smallest valid
+    2,
+    FIELD - 1,      # 2^61 - 2: largest valid
+    FIELD,          # 2^61 - 1: equals modulo, rejected
+    FIELD + 1,      # 2^61: masks to 0, rejected
+    FIELD + 2,      # 2^61 + 1: masks to 1, valid
+    2 * FIELD,      # 2^62 - 2: masks to FIELD - 1, valid
+    2 * FIELD + 1,  # 2^62 - 1: masks to FIELD, rejected
+    2**63 - 1,      # all lower 63 bits: masks to FIELD, rejected
+    2**63,          # only bit 63: masks to 0, rejected
+    2**63 + 1,      # bit 63 + 1: masks to 1, valid
+    2**64 - 9,      # UINT64_MAX - 8: masks to FIELD - 8, valid
+    2**64 - 2,      # UINT64_MAX - 1: masks to FIELD - 1, valid
+    2**64 - 1,      # UINT64_MAX: masks to FIELD, rejected
+]
+
+
+# Explicit boundary examples: each multiplier at the field modulus boundary.
 @example(multipliers=[0, FIELD], random=random.Random(1))
+@example(multipliers=[0, 0], random=random.Random(1))
+@example(multipliers=[FIELD, FIELD], random=random.Random(1))
+@example(multipliers=[1, 1], random=random.Random(1))
+@example(multipliers=[FIELD - 1, FIELD - 1], random=random.Random(1))
+# 2^61 masks to 0; 2^61 + 1 masks to 1 (valid).
+@example(multipliers=[FIELD + 1, FIELD + 2], random=random.Random(1))
+# High-bit patterns that reduce to boundary values.
+@example(multipliers=[2**64 - 1, 2**64 - 1], random=random.Random(1))
+@example(multipliers=[2**64 - 2, 2**64 - 2], random=random.Random(1))
+@example(multipliers=[2**63 - 1, 2**63], random=random.Random(1))
+@example(multipliers=[2 * FIELD + 1, 2 * FIELD], random=random.Random(1))
+# One valid, one at each rejection boundary.
+@example(multipliers=[1, FIELD], random=random.Random(1))
+@example(multipliers=[FIELD - 1, FIELD + 1], random=random.Random(1))
+@example(multipliers=[2, 2**64 - 1], random=random.Random(1))
 @given(
     multipliers=st.lists(
-        st.integers(min_value=1, max_value=FIELD - 1) | U64S, min_size=2, max_size=2
+        st.integers(min_value=1, max_value=FIELD - 1)
+        | U64S
+        | st.sampled_from(MULTIPLIER_BOUNDARIES),
+        min_size=2,
+        max_size=2,
     ),
     random=st.randoms(note_method_calls=True, use_true_random=True),
 )
