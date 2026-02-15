@@ -218,7 +218,23 @@ class IncrementalHasher(IncrementalUpdater):
         )
 
     def batch_value(self):
-        return C.umash_full(self.params, self.seed, self.which, self.acc, len(self.acc))
+        batch = C.umash_full(self.params, self.seed, self.which, self.acc, len(self.acc))
+
+        # Also verify the relevant half of a batch-computed fingerprint
+        # agrees with the batch hash.  The parent invariant then checks
+        # batch == digest, so transitively the fingerprint half is
+        # validated against the incremental digest at every accumulated
+        # size -- not just the <= 272 byte window in _check_all_batch_vs_ref.
+        fp = C.umash_fprint(self.params, self.seed, self.acc, len(self.acc))
+        assert fp.hash[self.which] == batch, {
+            "check": "fprint half vs umash_full",
+            "which": self.which,
+            "fprint_half": fp.hash[self.which],
+            "batch": batch,
+            "len": len(self.acc),
+        }
+
+        return batch
 
     def digest_value(self):
         return C.umash_digest(self.state)
