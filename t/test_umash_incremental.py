@@ -75,8 +75,45 @@ class IncrementalUpdater(RuleBasedStateMachine):
         self.multipliers = None
         self.oh = None
         self.params = None
+        self.seed = None
         self.state = None
         self.acc = b""
+
+    def _check_all_batch_vs_ref(self):
+        """Verify batch hash (both indices) and fingerprint against the
+        Python reference.  Only called for short inputs where the
+        reference is cheap."""
+        data = self.acc
+        n = len(data)
+
+        for which in (0, 1):
+            expected = umash(
+                UmashKey(poly=self.multipliers[which], oh=self.oh),
+                self.seed,
+                data,
+                secondary=(which == 1),
+            )
+            actual = C.umash_full(self.params, self.seed, which, data, n)
+            assert actual == expected, {
+                "check": "batch hash vs ref",
+                "which": which,
+                "len": n,
+            }
+
+        expected_fp = [
+            umash(
+                UmashKey(poly=self.multipliers[i], oh=self.oh),
+                self.seed,
+                data,
+                secondary=(i == 1),
+            )
+            for i in range(2)
+        ]
+        actual_fp = C.umash_fprint(self.params, self.seed, data, n)
+        assert [actual_fp.hash[0], actual_fp.hash[1]] == expected_fp, {
+            "check": "batch fprint vs ref",
+            "len": n,
+        }
 
     @invariant()
     def compare_values(self):
@@ -93,6 +130,11 @@ class IncrementalUpdater(RuleBasedStateMachine):
             "batch": batch,
             "actual": actual,
         }
+
+        # For short inputs, also cross-check both batch hash indices
+        # and the batch fingerprint against the Python reference.
+        if len(self.acc) <= 272:
+            self._check_all_batch_vs_ref()
 
     def _update(self, buf):
         self.acc += buf
