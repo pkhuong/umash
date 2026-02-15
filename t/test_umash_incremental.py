@@ -3,7 +3,7 @@ interfaces.  Compares their results with the batch implementation and
 the reference implementation.
 """
 
-from hypothesis import note
+from hypothesis import given, note, settings
 from hypothesis.stateful import (
     initialize,
     invariant,
@@ -95,6 +95,12 @@ class IncrementalUpdater(RuleBasedStateMachine):
     def update_short(self, buf):
         note("update_short: %s" % len(buf))
         self._update(buf)
+
+    @precondition(lambda self: self.state)
+    @rule()
+    def update_empty(self):
+        """Explicitly send a 0-byte update."""
+        self._update(b"")
 
     @precondition(lambda self: self.state)
     @rule(
@@ -207,3 +213,151 @@ class IncrementalFprinter(IncrementalUpdater):
 
 
 test_public_incremental_fprinter = IncrementalFprinter.TestCase
+
+
+# -- Targeted 0-byte update tests ----------------------------------------
+
+# Sizes that hit every dispatch path (short, medium, long, multi-block)
+# and interesting buffer-fill points (INCREMENTAL_GRANULARITY = 16).
+EMPTY_UPDATE_SIZES = [0, 1, 8, 9, 15, 16, 17, 240, 255, 256, 257, 512]
+
+
+def _sink_empty_update(sink):
+    """Call umash_sink_update with a 0-byte payload."""
+    buf = FFI.new("char[]", 1)
+    C.umash_sink_update(sink, buf, 0)
+
+
+def _sink_data_update(sink, data):
+    """Call umash_sink_update with a copy of *data*."""
+    n = len(data)
+    copy = FFI.new("char[]", n)
+    FFI.memmove(copy, data, n)
+    C.umash_sink_update(sink, copy, n)
+
+
+@settings(deadline=None)
+@given(
+    params=umash_params(),
+    seed=SEEDS,
+    which=st.integers(min_value=0, max_value=1),
+    random=st.randoms(use_true_random=True),
+)
+def test_public_empty_updates_hash(params, seed, which, random):
+    """0-byte updates at the beginning and end of the input must not
+    affect the incremental hash.
+
+    The 16-byte case is especially interesting: 16 bytes exactly fill
+    the internal buffer (bufsz == INCREMENTAL_GRANULARITY), so a
+    subsequent 0-byte update enters the second branch of
+    umash_sink_update (remaining == 0) rather than the fast path.
+    """
+    multipliers, oh, c_params = params
+
+    for n_bytes in EMPTY_UPDATE_SIZES:
+        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+        expected = C.umash_full(c_params, seed, which, data, n_bytes)
+
+        state = FFI.new("struct umash_state[1]")
+        C.umash_init(state, c_params, seed, which)
+        sink = FFI.addressof(state[0].sink)
+
+        # Multiple 0-byte updates at the very beginning.
+        _sink_empty_update(sink)
+        _sink_empty_update(sink)
+
+        if n_bytes > 0:
+            _sink_data_update(sink, data)
+
+        # Multiple 0-byte updates at the very end.
+        _sink_empty_update(sink)
+        _sink_empty_update(sink)
+
+        actual = C.umash_digest(state)
+        assert (
+            actual == expected
+        ), f"empty-updates hash mismatch: which={which} len={n_bytes}"
+
+
+@settings(deadline=None)
+@given(
+    params=umash_params(),
+    seed=SEEDS,
+    random=st.randoms(use_true_random=True),
+)
+def test_public_empty_updates_fprint(params, seed, random):
+    """0-byte updates at the beginning and end of the input must not
+    affect the incremental fingerprint."""
+    multipliers, oh, c_params = params
+
+    for n_bytes in EMPTY_UPDATE_SIZES:
+        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+        expected = C.umash_fprint(c_params, seed, data, n_bytes)
+
+        state = FFI.new("struct umash_fp_state[1]")
+        C.umash_fp_init(state, c_params, seed)
+        sink = FFI.addressof(state[0].sink)
+
+        _sink_empty_update(sink)
+        _sink_empty_update(sink)
+
+        if n_bytes > 0:
+            _sink_data_update(sink, data)
+
+        _sink_empty_update(sink)
+        _sink_empty_update(sink)
+
+        actual = C.umash_fp_digest(state)
+        assert [actual.hash[0], actual.hash[1]] == [
+            expected.hash[0],
+            expected.hash[1],
+        ], f"empty-updates fprint mismatch: len={n_bytes}"
+
+
+@settings(deadline=None)
+@given(
+    params=umash_params(),
+    seed=SEEDS,
+    which=st.integers(min_value=0, max_value=1),
+    random=st.randoms(use_true_random=True),
+)
+def test_public_empty_updates_between_chunks_hash(params, seed, which, random):
+    """0-byte updates interleaved between data chunks must not change
+    the hash.
+
+    When a chunk exactly fills the internal 16-byte buffer, a following
+    0-byte update enters the branch where remaining == 0 and
+    n_bytes == 0, setting large_umash but otherwise acting as a no-op.
+    """
+    multipliers, oh, c_params = params
+
+    for chunk_size, n_chunks in [
+        (1, 20),
+        (8, 4),
+        (15, 3),
+        (16, 3),
+        (17, 3),
+        (256, 3),
+    ]:
+        n_bytes = chunk_size * n_chunks
+        data = bytes(random.getrandbits(8) for _ in range(n_bytes))
+        expected = C.umash_full(c_params, seed, which, data, n_bytes)
+
+        state = FFI.new("struct umash_state[1]")
+        C.umash_init(state, c_params, seed, which)
+        sink = FFI.addressof(state[0].sink)
+
+        # Leading empty update.
+        _sink_empty_update(sink)
+
+        for i in range(n_chunks):
+            chunk = data[i * chunk_size : (i + 1) * chunk_size]
+            _sink_data_update(sink, chunk)
+            # Empty update after every chunk.
+            _sink_empty_update(sink)
+
+        actual = C.umash_digest(state)
+        assert actual == expected, (
+            f"interleaved empty-updates hash mismatch: "
+            f"which={which} chunk_size={chunk_size} n_chunks={n_chunks}"
+        )
