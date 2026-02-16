@@ -197,7 +197,7 @@ def test_public_smoke_matches(random, seed, data):
     bits=U64S,
     key=st.none() | st.binary(min_size=32, max_size=32),
 )
-def test_params_derive_valid(bits, key):
+def test_public_params_derive_valid(bits, key):
     """umash_params_derive must always produce a valid params struct:
 
     - poly[i][1] (the multiplier f) is in (0, 2**61 - 1)
