@@ -208,21 +208,29 @@ def incremental_fprint(params, seed, data):
     n_bytes=st.sampled_from(BOUNDARY_SIZES),
     which=st.sampled_from([0, 1]),
     seed=SEEDS,
-    multipliers=st.lists(
-        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
-    ),
-    key=oh_key(),
+    derive_bits=U64S,
+    derive_key=st.none() | st.binary(min_size=32, max_size=32),
     # Random content for every boundary length.
     random=st.randoms(use_true_random=True),
 )
-def test_umash_full_at_boundaries(n_bytes, which, seed, multipliers, key, random):
+def test_umash_full_at_boundaries(n_bytes, which, seed, derive_bits, derive_key, random):
     """umash_full must match the reference at every dispatch boundary."""
-    params = make_params(multipliers, key)
+    params = FFI.new("struct umash_params[1]")
+    if derive_key is None:
+        C.umash_params_derive(params, derive_bits, FFI.NULL)
+    else:
+        key_buf = FFI.new("char[]", 32)
+        FFI.memmove(key_buf, derive_key, 32)
+        C.umash_params_derive(params, derive_bits, key_buf)
+
+    multipliers = [params[0].poly[i][1] for i in range(2)]
+    oh = [params[0].oh[i] for i in range(C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT)]
+
     data = bytes(random.getrandbits(8) for _ in range(n_bytes))
     block = make_block(data)
 
     expected = umash(
-        UmashKey(poly=multipliers[which], oh=key),
+        UmashKey(poly=multipliers[which], oh=oh),
         seed,
         data,
         secondary=(which == 1),
@@ -241,21 +249,29 @@ def test_umash_full_at_boundaries(n_bytes, which, seed, multipliers, key, random
 @given(
     n_bytes=st.sampled_from(BOUNDARY_SIZES),
     seed=SEEDS,
-    multipliers=st.lists(
-        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
-    ),
-    key=oh_key(),
+    derive_bits=U64S,
+    derive_key=st.none() | st.binary(min_size=32, max_size=32),
     random=st.randoms(use_true_random=True),
 )
-def test_umash_fprint_at_boundaries(n_bytes, seed, multipliers, key, random):
+def test_umash_fprint_at_boundaries(n_bytes, seed, derive_bits, derive_key, random):
     """umash_fprint must match the reference at every dispatch boundary."""
-    params = make_params(multipliers, key)
+    params = FFI.new("struct umash_params[1]")
+    if derive_key is None:
+        C.umash_params_derive(params, derive_bits, FFI.NULL)
+    else:
+        key_buf = FFI.new("char[]", 32)
+        FFI.memmove(key_buf, derive_key, 32)
+        C.umash_params_derive(params, derive_bits, key_buf)
+
+    multipliers = [params[0].poly[i][1] for i in range(2)]
+    oh = [params[0].oh[i] for i in range(C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT)]
+
     data = bytes(random.getrandbits(8) for _ in range(n_bytes))
     block = make_block(data)
 
     expected = [
         umash(
-            UmashKey(poly=multipliers[i], oh=key),
+            UmashKey(poly=multipliers[i], oh=oh),
             seed,
             data,
             secondary=(i == 1),
