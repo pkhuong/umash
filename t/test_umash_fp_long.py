@@ -9,6 +9,7 @@ from umash_reference import umash, UmashKey
 
 
 U64S = st.integers(min_value=0, max_value=2**64 - 1)
+SEEDS = U64S | st.sampled_from([0, 1, 0xFF, 2**32 - 1, 2**32, 2**63, 2**64 - 1])
 
 
 FIELD = 2**61 - 1
@@ -24,7 +25,7 @@ def repeats(min_size):
 
 
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -60,7 +61,7 @@ def test_umash_fp_long(seed, multipliers, key, data):
 
 
 @given(
-    seed=U64S,
+    seed=SEEDS,
     multipliers=st.lists(
         st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
     ),
@@ -73,6 +74,42 @@ def test_umash_fp_long(seed, multipliers, key, data):
 )
 def test_umash_fp_long_repeat(seed, multipliers, key, data):
     """Compare umash_fp_long on repeated strings with the reference."""
+    expected = [
+        umash(UmashKey(poly=multiplier, oh=key), seed, data, secondary)
+        for secondary, multiplier in zip([False, True], multipliers)
+    ]
+    note(len(data))
+
+    n_bytes = len(data)
+    block = FFI.new("char[]", n_bytes)
+    FFI.memmove(block, data, n_bytes)
+    poly = FFI.new("uint64_t[2][2]")
+    for i in range(2):
+        poly[i][0] = (multipliers[i] ** 2) % FIELD
+        poly[i][1] = multipliers[i]
+
+    params = FFI.new("struct umash_params[1]")
+    for i, param in enumerate(key):
+        params[0].oh[i] = param
+
+    actual = C.umash_fp_long(poly, params[0].oh, seed, block, n_bytes)
+    assert [actual.hash[0], actual.hash[1]] == expected
+
+
+@given(
+    seed=SEEDS,
+    multipliers=st.lists(
+        st.integers(min_value=0, max_value=FIELD - 1), min_size=2, max_size=2
+    ),
+    key=st.lists(
+        U64S,
+        min_size=C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT,
+        max_size=C.UMASH_OH_PARAM_COUNT + C.UMASH_OH_TWISTING_COUNT,
+    ),
+    data=st.binary(min_size=1024, max_size=4096),
+)
+def test_umash_fp_long_large(seed, multipliers, key, data):
+    """Compare umash_fp_long with the reference for large diverse inputs."""
     expected = [
         umash(UmashKey(poly=multiplier, oh=key), seed, data, secondary)
         for secondary, multiplier in zip([False, True], multipliers)

@@ -51,21 +51,29 @@ static uint64_t s[4] = {
 	0xc6d5924050d5363fUL,
 };
 
+/* Independent state for incremental hashing chunk sizes. */
+static uint64_t incr_s[4] = {
+	0xa3f12c8b9e7d4510UL,
+	0x5b8e1a3f7c2d9064UL,
+	0xe94d6f2a1b8c3570UL,
+	0x2c7a5e9d4f0b8136UL,
+};
+
 static uint64_t
-next(void)
+xoshiro_next(uint64_t state[4])
 {
-	const uint64_t result = rotl(s[0] + s[3], 23) + s[0];
+	const uint64_t result = rotl(state[0] + state[3], 23) + state[0];
 
-	const uint64_t t = s[1] << 17;
+	const uint64_t t = state[1] << 17;
 
-	s[2] ^= s[0];
-	s[3] ^= s[1];
-	s[1] ^= s[2];
-	s[0] ^= s[3];
+	state[2] ^= state[0];
+	state[3] ^= state[1];
+	state[1] ^= state[2];
+	state[0] ^= state[3];
 
-	s[2] ^= t;
+	state[2] ^= t;
 
-	s[3] = rotl(s[3], 45);
+	state[3] = rotl(state[3], 45);
 
 	return result;
 }
@@ -98,6 +106,69 @@ run_range(const char *buf, size_t start_offset, size_t len)
 		/* Lower case hex, left 0-padded to 16 characters. */
 		printf("%016" PRIx64 " %016" PRIx64 " %016" PRIx64 " %016" PRIx64 "\n",
 		    fprint.hash[0], fprint.hash[1], low, high);
+
+		/* Incremental hash 0. */
+		{
+			struct umash_state inc;
+			size_t written = 0;
+
+			umash_init(&inc, &my_params, seed, /*which=*/0);
+			while (written < len) {
+				size_t remaining = len - written;
+				size_t chunk = (size_t)((unsigned __int128)xoshiro_next(incr_s) * (remaining + 1) >> 64);
+				umash_sink_update(&inc.sink, (const char *)start + written, chunk);
+				written += chunk;
+			}
+
+			if (umash_digest(&inc) != low) {
+				fprintf(stderr,
+				    "Incremental hash 0 mismatch len=%zu offset=%zu seed=%" PRIu64 "\n",
+				    len, start_offset, seed);
+			}
+		}
+
+		/* Incremental hash 1. */
+		{
+			struct umash_state inc;
+			size_t written = 0;
+
+			umash_init(&inc, &my_params, seed, /*which=*/1);
+			while (written < len) {
+				size_t remaining = len - written;
+				size_t chunk = (size_t)((unsigned __int128)xoshiro_next(incr_s) * (remaining + 1) >> 64);
+				umash_sink_update(&inc.sink, (const char *)start + written, chunk);
+				written += chunk;
+			}
+
+			if (umash_digest(&inc) != high) {
+				fprintf(stderr,
+				    "Incremental hash 1 mismatch len=%zu offset=%zu seed=%" PRIu64 "\n",
+				    len, start_offset, seed);
+			}
+		}
+
+		/* Incremental fingerprint. */
+		{
+			struct umash_fp_state inc;
+			struct umash_fp inc_fp;
+			size_t written = 0;
+
+			umash_fp_init(&inc, &my_params, seed);
+			while (written < len) {
+				size_t remaining = len - written;
+				size_t chunk = (size_t)((unsigned __int128)xoshiro_next(incr_s) * (remaining + 1) >> 64);
+				umash_sink_update(&inc.sink, (const char *)start + written, chunk);
+				written += chunk;
+			}
+
+			inc_fp = umash_fp_digest(&inc);
+			if (inc_fp.hash[0] != fprint.hash[0] ||
+			    inc_fp.hash[1] != fprint.hash[1]) {
+				fprintf(stderr,
+				    "Incremental fprint mismatch len=%zu offset=%zu seed=%" PRIu64 "\n",
+				    len, start_offset, seed);
+			}
+		}
 	}
 
 	return;
@@ -115,7 +186,7 @@ run_test_set(void)
 	const char *bytes = (const char *)buf;
 
 	for (size_t i = 0; i < num_bytes / sizeof(uint64_t); i++)
-		buf[i] = next();
+		buf[i] = xoshiro_next(s);
 
 	fprintf(stderr,
 	    "Running %zu test set iterations.  Run as ./example | sha256sum --strict --check <(echo '%s  -')\n",

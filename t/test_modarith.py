@@ -17,6 +17,36 @@ FIELD = 2**61 - 1
 W = 2**64
 
 
+"""Boundary values that exercise edges in the modular arithmetic.
+
+The final ``% modulo`` in modint() maps each value into [0, modulo),
+so the same list works for every modulus: out-of-range entries simply
+wrap to a nearby interesting representative.
+
+    MODULO (2**64 - 8)  : the modular reduction boundary
+    W - 16              : add_mod_slow_slow_path entry threshold
+    W - 32              : split_accumulator_update UNLIKELY threshold
+    FIELD (2**61 - 1)   : the prime field modulus
+    0, 1, 8             : small critical values (8 = MODULO wrap increment)
+"""
+_BOUNDARY_VALUES = [
+    0,
+    1,
+    8,
+    FIELD - 1,
+    FIELD,
+    FIELD + 1,
+    MODULO - 1,
+    MODULO,
+    MODULO + 1,
+    W - 32,
+    W - 31,
+    W - 17,
+    W - 16,
+    W - 1,
+]
+
+
 def modint(modulo):
     """The modint strategy generates integer values in [0, modulo)."""
     max_po2 = math.ceil(math.log(modulo, 2))
@@ -26,10 +56,12 @@ def modint(modulo):
         st.integers(min_value=0, max_value=max_po2),
         st.integers(min_value=-16, max_value=16),
     )
+    # values at important arithmetic boundaries...
+    near_boundary = st.sampled_from(_BOUNDARY_VALUES)
     # or let Hypothesis do its thing with the whole range
     any_int = st.integers(min_value=0, max_value=modulo - 1)
     # and always reduce the result.
-    return (near_power_of_two | any_int).map(lambda x: x % modulo)
+    return (near_power_of_two | near_boundary | any_int).map(lambda x: x % modulo)
 
 
 @given(x=modint(W), y=modint(MODULO))
