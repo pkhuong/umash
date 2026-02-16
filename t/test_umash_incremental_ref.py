@@ -118,7 +118,7 @@ def reference_fprint(multipliers, key, seed, data):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_granularity_aligned_hash(seed, multipliers, key, random):
+def test_public_incremental_granularity_aligned_hash(seed, multipliers, key, random):
     """Feed data in exact 16-byte pieces and compare hash against the
     Python reference at sizes that hit every OH iteration step."""
     params = make_params(multipliers, key)
@@ -158,7 +158,7 @@ def test_incremental_granularity_aligned_hash(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_granularity_aligned_fprint(seed, multipliers, key, random):
+def test_public_incremental_granularity_aligned_fprint(seed, multipliers, key, random):
     """Feed data in exact 16-byte pieces and compare fingerprint against
     the Python reference."""
     params = make_params(multipliers, key)
@@ -198,7 +198,7 @@ def test_incremental_granularity_aligned_fprint(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_block_aligned_hash(seed, multipliers, key, random):
+def test_public_incremental_block_aligned_hash(seed, multipliers, key, random):
     """Feed data in whole 256-byte blocks (triggering block_sink_update),
     with a variable-length tail, and compare against the Python reference."""
     params = make_params(multipliers, key)
@@ -250,7 +250,7 @@ def test_incremental_block_aligned_hash(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_block_aligned_fprint(seed, multipliers, key, random):
+def test_public_incremental_block_aligned_fprint(seed, multipliers, key, random):
     """Feed data in whole 256-byte blocks with a tail, and compare
     fingerprint against the Python reference."""
     params = make_params(multipliers, key)
@@ -381,7 +381,7 @@ SPLIT_PATTERNS = [
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_split_patterns_hash(seed, multipliers, key, random):
+def test_public_incremental_split_patterns_hash(seed, multipliers, key, random):
     """Test specific split patterns that straddle internal state machine
     boundaries, comparing hash against the Python reference."""
     params = make_params(multipliers, key)
@@ -413,7 +413,7 @@ def test_incremental_split_patterns_hash(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_split_patterns_fprint(seed, multipliers, key, random):
+def test_public_incremental_split_patterns_fprint(seed, multipliers, key, random):
     """Test specific split patterns comparing fingerprint against the
     Python reference."""
     params = make_params(multipliers, key)
@@ -446,7 +446,7 @@ def test_incremental_split_patterns_fprint(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_byte_at_a_time_hash_vs_ref(seed, multipliers, key, random):
+def test_public_incremental_byte_at_a_time_hash_vs_ref(seed, multipliers, key, random):
     """Feed data one byte at a time and compare hash against the Python
     reference.  This is the worst case for the incremental state
     machine: bufsz advances by 1 each call, exercising every buffer
@@ -483,7 +483,7 @@ def test_incremental_byte_at_a_time_hash_vs_ref(seed, multipliers, key, random):
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_byte_at_a_time_fprint_vs_ref(seed, multipliers, key, random):
+def test_public_incremental_byte_at_a_time_fprint_vs_ref(seed, multipliers, key, random):
     """Feed data one byte at a time and compare fingerprint against the
     Python reference."""
     params = make_params(multipliers, key)
@@ -521,7 +521,7 @@ def test_incremental_byte_at_a_time_fprint_vs_ref(seed, multipliers, key, random
     random=st.randoms(use_true_random=True),
     splits=st.lists(st.integers(min_value=1, max_value=255), min_size=0, max_size=8),
 )
-def test_incremental_random_splits_one_block_hash(
+def test_public_incremental_random_splits_one_block_hash(
     seed, multipliers, key, random, splits
 ):
     """For a single-OH-block input (256 bytes), let Hypothesis choose
@@ -556,7 +556,7 @@ def test_incremental_random_splits_one_block_hash(
     random=st.randoms(use_true_random=True),
     splits=st.lists(st.integers(min_value=1, max_value=511), min_size=0, max_size=8),
 )
-def test_incremental_random_splits_two_blocks_fprint(
+def test_public_incremental_random_splits_two_blocks_fprint(
     seed, multipliers, key, random, splits
 ):
     """For a two-block input (512 bytes), let Hypothesis choose split
@@ -591,7 +591,7 @@ def test_incremental_random_splits_two_blocks_fprint(
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_digest_repeatable(seed, multipliers, key, random):
+def test_public_incremental_digest_repeatable(seed, multipliers, key, random):
     """Calling umash_digest or umash_fp_digest multiple times on the
     same state must return the same value, and that value must match
     the Python reference.
