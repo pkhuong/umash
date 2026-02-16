@@ -213,7 +213,7 @@ def incremental_fprint(params, seed, data):
     # Random content for every boundary length.
     random=st.randoms(use_true_random=True),
 )
-def test_umash_full_at_boundaries(n_bytes, which, seed, derive_bits, derive_key, random):
+def test_public_umash_full_at_boundaries(n_bytes, which, seed, derive_bits, derive_key, random):
     """umash_full must match the reference at every dispatch boundary."""
     params = FFI.new("struct umash_params[1]")
     if derive_key is None:
@@ -253,7 +253,7 @@ def test_umash_full_at_boundaries(n_bytes, which, seed, derive_bits, derive_key,
     derive_key=st.none() | st.binary(min_size=32, max_size=32),
     random=st.randoms(use_true_random=True),
 )
-def test_umash_fprint_at_boundaries(n_bytes, seed, derive_bits, derive_key, random):
+def test_public_umash_fprint_at_boundaries(n_bytes, seed, derive_bits, derive_key, random):
     """umash_fprint must match the reference at every dispatch boundary."""
     params = FFI.new("struct umash_params[1]")
     if derive_key is None:
@@ -305,7 +305,7 @@ def test_umash_fprint_at_boundaries(n_bytes, seed, derive_bits, derive_key, rand
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_hash_at_boundaries(n_bytes, which, seed, multipliers, key, random):
+def test_public_incremental_hash_at_boundaries(n_bytes, which, seed, multipliers, key, random):
     """The incremental API must agree with umash_full at boundary sizes."""
     params = make_params(multipliers, key)
     data = bytes(random.getrandbits(8) for _ in range(n_bytes))
@@ -326,7 +326,7 @@ def test_incremental_hash_at_boundaries(n_bytes, which, seed, multipliers, key, 
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_fprint_at_boundaries(n_bytes, seed, multipliers, key, random):
+def test_public_incremental_fprint_at_boundaries(n_bytes, seed, multipliers, key, random):
     """The incremental fingerprint API must agree with umash_fprint."""
     params = make_params(multipliers, key)
     data = bytes(random.getrandbits(8) for _ in range(n_bytes))
@@ -354,7 +354,7 @@ def test_incremental_fprint_at_boundaries(n_bytes, seed, multipliers, key, rando
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_chunked_at_boundaries(
+def test_public_incremental_chunked_at_boundaries(
     n_bytes, which, seed, multipliers, key, random
 ):
     """Feed data in 16-byte chunks (INCREMENTAL_GRANULARITY) via the
@@ -415,7 +415,7 @@ def test_incremental_chunked_at_boundaries(
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_chunked_fprint_at_boundaries(
+def test_public_incremental_chunked_fprint_at_boundaries(
     n_bytes, seed, multipliers, key, random
 ):
     """Feed data in 16-byte chunks via the incremental fingerprint API
@@ -471,7 +471,7 @@ def test_incremental_chunked_fprint_at_boundaries(
     key=oh_key(),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_byte_at_a_time(seed, multipliers, key, random):
+def test_public_incremental_byte_at_a_time(seed, multipliers, key, random):
     """Feed data one byte at a time around the medium/long boundary.
 
     This is the most adversarial pattern for the incremental state
@@ -516,7 +516,7 @@ def test_incremental_byte_at_a_time(seed, multipliers, key, random):
     tail_size=st.integers(min_value=1, max_value=16),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_hash_large_then_short(
+def test_public_incremental_hash_large_then_short(
     which, seed, multipliers, key, chunk_size, num_chunks, tail_size, random
 ):
     """Feed one or more large (>1024 byte) updates followed by a short
@@ -563,7 +563,7 @@ def test_incremental_hash_large_then_short(
     tail_size=st.integers(min_value=1, max_value=16),
     random=st.randoms(use_true_random=True),
 )
-def test_incremental_fprint_large_then_short(
+def test_public_incremental_fprint_large_then_short(
     seed, multipliers, key, chunk_size, num_chunks, tail_size, random
 ):
     """Feed one or more large (>1024 byte) updates followed by a short
